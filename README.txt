@@ -1,0 +1,1 @@
+Mario 3 in a Flappy-Birds universe. Uses the pygame module. Keyboard "a" and "d" forward and reverse. Space bar and Mouse clicks fly. Pipes are obstacles in a scrolling 2D platform style. Collect coins to increase your score. 100 coins to gain a life. 100 points to progress to the next level. 9 levels total. Still in development but is playable. Adding controller support soon.
