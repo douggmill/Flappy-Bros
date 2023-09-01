@@ -1,7 +1,7 @@
 import random  # For generating random numbers
-import sys  # We will use sys.exit to exit the program
 import pygame
-from pygame.locals import *  # Basic pygame imports
+import sys
+from pygame.locals import *
 
 # Global Variables for the game
 FPS = 32
@@ -40,6 +40,10 @@ Bird9 = 'images/Bird9.png'
 Bird10 = 'images/Bird10.png'
 Bird11 = 'images/Bird11.png'
 Bird12 = 'images/Bird12.png'
+Bird13 = 'images/Bird13.png'
+Bird14 = 'images/Bird14.png'
+Bird15 = 'images/Bird15.png'
+Bird16 = 'images/Bird16.png'
 gameLevel = 1
 p_x = 0
 p_y = 0
@@ -54,30 +58,8 @@ spriteInt = 0
 p_wing = 0
 gameOver = False
 crash_test = False  # hit box detection
-
-
-def welcome_main_screen():
-    msgx = int((screen_width - game_image['message'].get_width()) / 2)
-    msgy = int(scr_height * 0.13)
-    while True:
-        for button_event in pygame.event.get():
-            # if user clicks on cross button, close the game
-            if button_event.type == QUIT or (button_event.type == KEYDOWN and button_event.key == K_ESCAPE):
-                pygame.quit()
-                sys.exit()
-
-            # If the user presses space or up key, start the game for them
-            elif button_event.type == KEYDOWN and (button_event.key == K_SPACE or button_event.key == K_UP) \
-                    or button_event.type == MOUSEBUTTONDOWN:
-                game_audio_sound['start'].play()
-                pygame.time.delay(2000)
-                game_audio_sound['Overworld'].play()
-                return
-            else:
-                display_screen_window.blit(game_image['start'], (0, 0))
-                display_screen_window.blit(game_image['message'], (msgx, msgy))
-                pygame.display.update()
-                time_clock.tick(FPS)
+Bird3_dead = False
+start_screen = True
 
 
 def load_forward_sprites():
@@ -102,146 +84,47 @@ def flip_sprites_left():
     game_image['Still'] = pygame.transform.flip(game_image['Still'], True, False)
 
 
-def main_gameplay():
-    global p_x, p_y, b_x, gameLevel, score, last_p_y, this_p_x, last_p_x, spriteInt, gameOver, crash_test, p_flap, \
-        forward, reverse, pipe_walking, freezeMario, background, unfreezeMario, p_vx, p_flap_accuracy, p_wing, \
-        coins, lives
-    p_x = 50  # 0 to 262, mario xAxis starting point
-    p_y = int(screen_width / 2)  # mario starting point
-    b_x = 0  # base xAxis position
-    gameLevel = 1
-    score = 0
-    coins = 98
-    lives = 1
-    last_p_y = p_y
-    this_p_x = 0
-    last_p_x = 0
-    spriteInt = 0
-    gameOver = False
-    crash_test = False  # hit box detection
-    p_flap = False
-    forward = False
-    reverse = False
-    pipe_walking = False
-    freezeMario = False
-    background = 'images/overworld.png'
-    game_image['background'] = pygame.image.load(background).convert()
-    load_forward_sprites()  # right facing sprites loaded first
-
-    n_pip1 = get_Random_Pipes()
-    n_pip2 = get_Random_Pipes()
-    up_pipes = [
-        {'x': screen_width + 200, 'y': n_pip1[0]['y']},
-        {'x': screen_width + 200 + (screen_width / 2), 'y': n_pip2[0]['y']},
-    ]
-
-    low_pipes = [
-        {'x': screen_width + 200, 'y': n_pip1[1]['y']},
-        {'x': screen_width + 200 + (screen_width / 2), 'y': n_pip2[1]['y']},
-    ]
-
-    n_coin = get_Random_Coins()
-    n_coin2 = get_Random_Coins()
-
-    ran_coin = [
-        {'x': screen_width + 200, 'y': n_coin[0]['y']},
-        {'x': screen_width + 200 + (screen_width / 2), 'y': n_coin2[0]['y']},
-    ]
-
+def start_Bird1():
+    global ran_Bird
     n_Bird = get_Random_Bird()
     ran_Bird = [
         {'x': screen_width, 'y': n_Bird[0]['y']},
     ]
 
+
+def start_Bird2():
+    global ran_Bird2
     n_Bird2 = get_Random_Bird2()
     ran_Bird2 = [
         {'x': screen_width, 'y': n_Bird2[0]['y']},
     ]
 
+
+def start_Bird3():
+    global ran_Bird3
     n_Bird3 = get_Random_Bird3()
     ran_Bird3 = [
         {'x': screen_width, 'y': n_Bird3[0]['y']},
     ]
 
-    Bird1_Vx = - 3
-    Bird2_Vx = - 2
-    Bird3_Vx = - 5.5
-    pip_Vx = - 4  # pipe speed
-    coin_Vx = - 6
-    p_vx = -9
-    p_mvx = 10  # mario fall speed
-    p_accuracy = 1  # mario lift
-    p_flap_accuracy = -8  # mario lift
-    reverse_index = True
-    animateSprite = pygame.USEREVENT + 0  # 8 total user events
-    pygame.time.set_timer(animateSprite, 100)
-    unfreezeMario = pygame.USEREVENT + 1
-    animatePWing = pygame.USEREVENT + 2  # 8 total user events
-    pygame.time.set_timer(animatePWing, 100)
-    game_image['base'] = pygame.image.load(base).convert()
 
-    while True:
-        for event in pygame.event.get():
+def main_gameplay():
+    global gameOver, crash_test, start_screen, p_flap, p_y, Bird3_dead, p_vx, p_mvx, p_accuracy
 
-            if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
-                pygame.quit()
-                sys.exit()
+    if p_vx < p_mvx and not p_flap:
+        p_vx += p_accuracy
 
-            if event.type == unfreezeMario:  # user event to flip coins
-                freezeMario = False
+    p_height = game_image['TailUp'].get_height()
+    p_y = p_y + min(p_vx, play_ground - p_y - p_height)
 
-            if not freezeMario:
-                if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP) \
-                        or event.type == MOUSEBUTTONDOWN:
-                    if p_y > 0:
-                        last_p_y = p_y
-                        p_vx = p_flap_accuracy
-                        p_flap = True
-                        game_audio_sound['wing'].play()
+    for pip_upper, pip_lower in zip(up_pipes, low_pipes):  # set different lower and upper pipe speeds
+        pip_upper['x'] += pip_Vx
+        pip_lower['x'] += pip_Vx
+    for coin_random in ran_coin:  # set different lower and upper pipe speeds
+        coin_random['x'] += coin_Vx
 
-                if event.type == KEYDOWN and (event.key == K_d):
-                    forward = True
-                    reverse = False
-                    reverse_index = True
-                    load_forward_sprites()
-                if event.type == KEYUP and (event.key == K_d):
-                    forward = False
-
-                if event.type == KEYDOWN and (event.key == K_a):
-                    reverse = True
-                    forward = False
-                    if reverse_index:
-                        flip_sprites_left()
-                        reverse_index = False
-
-            if event.type == KEYUP and (event.key == K_a):
-                reverse = False
-
-            if event.type == animateSprite:  # user event to flip coins
-                spriteInt += 1
-                if spriteInt > 3:
-                    spriteInt = 0
-            if event.type == animatePWing:  # user event to flip coins
-                p_wing += 1
-                if p_wing > 1:
-                    p_wing = 0
-
-        if gameOver and crash_test:  # breaks loop and goes to main menu
-            return
-
-        if p_vx < p_mvx and not p_flap:
-            p_vx += p_accuracy
-
-        p_height = game_image['TailUp'].get_height()
-        p_y = p_y + min(p_vx, play_ground - p_y - p_height)
-
-        for pip_upper, pip_lower in zip(up_pipes, low_pipes):  # set different lower and upper pipe speeds
-            pip_upper['x'] += pip_Vx
-            pip_lower['x'] += pip_Vx
-        for coin_random in ran_coin:  # set different lower and upper pipe speeds
-            coin_random['x'] += coin_Vx
-
-        if 0 <= ran_Bird2[0]['x'] < 3:
+    if ran_Bird2:
+        if 0 <= ran_Bird2[0]['x'] < 3 and gameLevel == 2:
             new_Bird2 = get_Random_Bird2()
             ran_Bird2.append(new_Bird2[0])
         for Bird2_random in ran_Bird2:
@@ -249,7 +132,32 @@ def main_gameplay():
         if ran_Bird2[0]['x'] < -game_image['Bird2_img'][0].get_width():
             ran_Bird2.pop(0)
 
-        if 0 <= ran_Bird[0]['x'] < 3:
+    if ran_Bird3:
+        if 0 < ran_Bird3[0]['x'] < 4 and gameLevel == 3:
+            game_image['Bird3_img'] = (
+                pygame.image.load(Bird9).convert_alpha(),
+                pygame.image.load(Bird10).convert_alpha(),
+                pygame.image.load(Bird11).convert_alpha(),
+                pygame.image.load(Bird12).convert_alpha(),
+            )
+            new_Bird3 = get_Random_Bird3()
+            ran_Bird3.append(new_Bird3[0])
+        for Bird3_random in ran_Bird3:
+            Bird3_random['x'] += Bird3_Vx
+            if Bird3_dead and Bird3_random['y'] <= 381:
+                ran_Bird3[0]['y'] -= Bird3_Vx
+        if ran_Bird3[0]['x'] < -game_image['Bird3_img'][0].get_width():
+            ran_Bird3.pop(0)
+            game_image['Bird3_img'] = (
+                pygame.image.load(Bird9).convert_alpha(),
+                pygame.image.load(Bird10).convert_alpha(),
+                pygame.image.load(Bird11).convert_alpha(),
+                pygame.image.load(Bird12).convert_alpha(),
+            )
+            Bird3_dead = False
+
+    if ran_Bird:
+        if 0 <= ran_Bird[0]['x'] < 3 and gameLevel == 4:
             new_Bird = get_Random_Bird()
             ran_Bird.append(new_Bird[0])
         for Bird_random in ran_Bird:
@@ -257,86 +165,84 @@ def main_gameplay():
         if ran_Bird[0]['x'] < -game_image['Bird_img'][0].get_width():
             ran_Bird.pop(0)
 
-        for Bird3_random in ran_Bird3:
-            Bird3_random['x'] += Bird3_Vx
+    if 0 < up_pipes[0]['x'] < 5:
+        new_pip = get_Random_Pipes()
+        up_pipes.append(new_pip[0])
+        low_pipes.append(new_pip[1])
+        new_coin = get_Random_Coins()
+        ran_coin.append(new_coin[0])
 
-        if 0 < up_pipes[0]['x'] < 5:
-            new_pip = get_Random_Pipes()
-            up_pipes.append(new_pip[0])
-            low_pipes.append(new_pip[1])
-            new_coin = get_Random_Coins()
-            ran_coin.append(new_coin[0])
-            new_Bird3 = get_Random_Bird3()
-            ran_Bird3.append(new_Bird3[0])
+    if up_pipes[0]['x'] < -game_image['pipe'][0].get_width():
+        up_pipes.pop(0)
+        low_pipes.pop(0)
+        ran_coin.pop(0)
 
-        if up_pipes[0]['x'] < -game_image['pipe'][0].get_width():
-            up_pipes.pop(0)
-            low_pipes.pop(0)
-            ran_coin.pop(0)
-            ran_Bird3.pop(0)
+    display_screen_window.blit(game_image['background'], (0, 0))
+    random_Stuff(up_pipes, low_pipes, ran_coin, ran_Bird, ran_Bird2, ran_Bird3)
+    display_screen_window.blit(game_image['base'], (b_x, play_ground))
 
-        display_screen_window.blit(game_image['background'], (0, 0))
-        random_Stuff(up_pipes, low_pipes, ran_coin, ran_Bird, ran_Bird2, ran_Bird3)
-        display_screen_window.blit(game_image['base'], (b_x, play_ground))
+    if crash_test:
+        game_audio_sound['Overworld'].stop()
+        game_audio_sound['Underground'].stop()
+        game_audio_sound['PipeMaze'].stop()
+        game_audio_sound['desert'].stop()
+        game_audio_sound['Hammerbros'].stop()
+        game_audio_sound['Athletic'].stop()
+        game_audio_sound['Castle'].stop()
+        game_audio_sound['Airship'].stop()
+        gameOver = True
+        game_over(up_pipes, low_pipes, ran_coin, ran_Bird, ran_Bird2, ran_Bird3)
 
-        if not crash_test:
-            sprite_animations()
-            crash_test = is_Colliding(up_pipes, low_pipes, ran_coin, ran_Bird, ran_Bird2, ran_Bird3)
-            check_Points()
-        else:
-            game_audio_sound['Overworld'].stop()
-            game_audio_sound['Underground'].stop()
-            game_audio_sound['PipeMaze'].stop()
-            game_audio_sound['desert'].stop()
-            game_audio_sound['Hammerbros'].stop()
-            game_audio_sound['Athletic'].stop()
-            game_audio_sound['Castle'].stop()
-            game_audio_sound['Airship'].stop()
-            gameOver = True
-            game_over(up_pipes, low_pipes, ran_coin, ran_Bird, ran_Bird2, ran_Bird3)
+    else:
+        sprite_animations()
+        crash_test = is_Colliding(up_pipes, low_pipes, ran_coin, ran_Bird, ran_Bird2, ran_Bird3)
+        check_Points()
 
-        d = [int(x) for x in list(str(score))]
-        w = 0
-        for digit in d:
-            w += game_image['numbers'][digit].get_width()
-        Xoffset = (screen_width - w) / 1.08  # x axis numbers
-        for digit in d:
-            display_screen_window.blit(game_image['numbers'][digit], (Xoffset, scr_height * 0.918))  # y axis numbers
-            Xoffset += game_image['numbers'][digit].get_width()
+    if gameOver and crash_test:  # breaks loop and goes to main menu
+        start_screen = True
 
-        e = [int(x) for x in list(str(coins))]
-        f = 0
-        for digit in e:
-            f += game_image['numbers'][digit].get_width()
-        Xoffset = (screen_width - f) / 1.08  # x axis numbers
-        for digit in e:
-            display_screen_window.blit(game_image['numbers'][digit], (Xoffset, scr_height * 0.89))  # y axis numbers
-            Xoffset += game_image['numbers'][digit].get_width()
+    d = [int(x) for x in list(str(score))]
+    w = 0
+    for digit in d:
+        w += game_image['numbers'][digit].get_width()
+    Xoffset = (screen_width - w) / 1.08  # x axis numbers
+    for digit in d:
+        display_screen_window.blit(game_image['numbers'][digit], (Xoffset, scr_height * 0.918))  # y axis numbers
+        Xoffset += game_image['numbers'][digit].get_width()
 
-        display_screen_window.blit(game_image['numbers'][gameLevel], (75, 456))  # world number
-        display_screen_window.blit(game_image['numbers'][lives], (65, 469))  # lives
+    e = [int(x) for x in list(str(coins))]
+    f = 0
+    for digit in e:
+        f += game_image['numbers'][digit].get_width()
+    Xoffset = (screen_width - f) / 1.08  # x axis numbers
+    for digit in e:
+        display_screen_window.blit(game_image['numbers'][digit], (Xoffset, scr_height * 0.89))  # y axis numbers
+        Xoffset += game_image['numbers'][digit].get_width()
 
-        if p_flap:
-            p_flap = False
-        pygame.display.update()
-        time_clock.tick(FPS)
+    display_screen_window.blit(game_image['numbers'][gameLevel], (75, 456))  # world number
+    display_screen_window.blit(game_image['numbers'][lives], (65, 469))  # lives
+
+    if p_flap:
+        p_flap = False
+    pygame.display.update()
+    time_clock.tick(FPS)
 
 
-def random_Stuff(up_pipes, low_pipes, ran_coin, ran_Bird, ran_Bird2, ran_Bird3):
-    for pip_upper, pip_lower in zip(up_pipes, low_pipes):  # Display pipe new locations
+def random_Stuff(upper_pipes, lower_pipes, random_coin, random_Bird, random_Bird2, random_Bird3):
+    for pip_upper, pip_lower in zip(upper_pipes, lower_pipes):  # Display pipe new locations
         display_screen_window.blit(game_image['pipe'][0], (pip_upper['x'], pip_upper['y']))
         display_screen_window.blit(game_image['pipe'][1], (pip_lower['x'], pip_lower['y']))
 
-    for coin_random in ran_coin:  # Display coin new locations
+    for coin_random in random_coin:  # Display coin new locations
         display_screen_window.blit(game_image['coin_img'][spriteInt], (coin_random['x'], coin_random['y']))
 
-    for Bird_random in ran_Bird:  # Display Bird new locations
+    for Bird_random in random_Bird:  # Display Bird new locations
         display_screen_window.blit(game_image['Bird_img'][spriteInt], (Bird_random['x'], Bird_random['y']))
 
-    for Bird2_random in ran_Bird2:  # Display Bird2 new locations
+    for Bird2_random in random_Bird2:  # Display Bird2 new locations
         display_screen_window.blit(game_image['Bird2_img'][spriteInt], (Bird2_random['x'], Bird2_random['y']))
 
-    for Bird3_random in ran_Bird3:  # Display Bird new locations
+    for Bird3_random in random_Bird3:  # Display Bird new locations
         display_screen_window.blit(game_image['Bird3_img'][spriteInt], (Bird3_random['x'], Bird3_random['y']))
 
 
@@ -389,13 +295,13 @@ def sprite_animations():
         display_screen_window.blit(game_image['TailFroze'], (p_x, p_y))
 
 
-def game_over(up_pipes, low_pipes, ran_coin, ran_Bird, ran_Bird2, ran_Bird3):
+def game_over(upper_pipes, lower_pipes, random_coin, random_Bird, random_Bird2, random_Bird3):
     global p_x, p_y, b_x, play_ground
     game_audio_sound['die'].play()
     for i in range(0, 10):
         p_y += -4
         display_screen_window.blit(game_image['background'], (0, 0))
-        random_Stuff(up_pipes, low_pipes, ran_coin, ran_Bird, ran_Bird2, ran_Bird3)
+        random_Stuff(upper_pipes, lower_pipes, random_coin, random_Bird, random_Bird2, random_Bird3)
         display_screen_window.blit(game_image['base'], (b_x, play_ground))
         display_screen_window.blit(game_image['die'], (p_x, p_y))
         pygame.display.update()
@@ -406,7 +312,7 @@ def game_over(up_pipes, low_pipes, ran_coin, ran_Bird, ran_Bird2, ran_Bird3):
         #     p_vx += p_accuracy
         p_y += 8
         display_screen_window.blit(game_image['background'], (0, 0))
-        random_Stuff(up_pipes, low_pipes, ran_coin, ran_Bird, ran_Bird2, ran_Bird3)
+        random_Stuff(upper_pipes, lower_pipes, random_coin, random_Bird, random_Bird2, random_Bird3)
         display_screen_window.blit(game_image['base'], (b_x, play_ground))
         display_screen_window.blit(game_image['die'], (p_x, p_y))
         pygame.display.update()
@@ -415,7 +321,7 @@ def game_over(up_pipes, low_pipes, ran_coin, ran_Bird, ran_Bird2, ran_Bird3):
 
 def check_Points():
     global background, score, gameLevel
-    if score == 5 and gameLevel < 2:
+    if score == 50 and gameLevel < 2:
         gameLevel += 1
         game_audio_sound['Overworld'].stop()
         game_audio_sound['Underground'].play()
@@ -423,7 +329,8 @@ def check_Points():
         game_image['background'] = pygame.image.load(background).convert()
         Level_Stats = 'images/undergroundBase.png'
         game_image['base'] = pygame.image.load(Level_Stats).convert()
-    if score == 30 and gameLevel < 3:
+        start_Bird2()
+    if score == 100 and gameLevel < 3:
         gameLevel += 1
         game_audio_sound['Underground'].stop()
         game_audio_sound['PipeMaze'].play()
@@ -431,7 +338,8 @@ def check_Points():
         game_image['background'] = pygame.image.load(background).convert()
         Level_Stats = 'images/pipeBase.png'
         game_image['base'] = pygame.image.load(Level_Stats).convert()
-    if score == 40 and gameLevel < 3:
+        start_Bird3()
+    if score == 150 and gameLevel < 4:
         gameLevel += 1
         game_audio_sound['PipeMaze'].stop()
         game_audio_sound['desert'].play()
@@ -439,7 +347,8 @@ def check_Points():
         game_image['background'] = pygame.image.load(background).convert()
         Level_Stats = 'images/desertBase.png'
         game_image['base'] = pygame.image.load(Level_Stats).convert()
-    if score == 50 and gameLevel < 4:
+        start_Bird1()
+    if score == 200 and gameLevel < 5:
         gameLevel += 1
         game_audio_sound['desert'].stop()
         game_audio_sound['Hammerbros'].play()
@@ -447,44 +356,43 @@ def check_Points():
         game_image['background'] = pygame.image.load(background).convert()
         Level_Stats = 'images/startBase.png'
         game_image['base'] = pygame.image.load(Level_Stats).convert()
-    if score == 55 and gameLevel < 5:
+    if score == 250 and gameLevel < 6:
         gameLevel += 1
         game_audio_sound['Hammerbros'].stop()
         game_audio_sound['Athletic'].play()
-    if score == 60 and gameLevel < 6:
+    if score == 350 and gameLevel < 7:
         gameLevel += 1
         game_audio_sound['Athletic'].stop()
         game_audio_sound['Airship'].play()
-    if score == 70 and gameLevel < 7:
+    if score == 400 and gameLevel < 8:
         gameLevel += 1
         game_audio_sound['Airship'].stop()
         game_audio_sound['Castle'].play()
 
 
-def is_Colliding(up_pipes, low_pipes, ran_coin, ran_Bird, ran_Bird2, ran_Bird3):
+def is_Colliding(upper_pipes, lower_pipes, random_coin, random_Bird, random_Bird2, random_Bird3):
     global p_x, p_y, p_flap, forward, pipe_walking, score, coin_h, Bird_h, Bird2_h, Bird3_h, freezeMario, \
-        unfreezeMario, last_p_y, p_vx, p_flap_accuracy, coins, lives
-    # out of bounds
-    # if p_y > play_ground - 25 or p_y < 0:
-    #     return True
-    # elif p_x == 0:
-    #     return True
+        unfreezeMario, last_p_y, p_vx, p_flap_accuracy, coins, lives, Bird3_dead
 
-    # bird hit box
-    for Bird in ran_Bird:
+    if p_y > play_ground - 25 or p_y < 0:  # out of bounds
+        return True
+    elif p_x == 0:
+        return True
+
+    for Bird in random_Bird:  # bird hit box
         Bird_h = game_image['Bird_img'][0].get_height() - 1
         Bird_w = game_image['Bird_img'][0].get_width() * 0.45 - 1
         if abs(p_y - Bird['y']) < Bird_w and abs(p_x - Bird['x']) < Bird_w:
             return True
 
-    for Bird_2 in ran_Bird2:
+    for Bird_2 in random_Bird2:
         Bird2_h = game_image['Bird2_img'][0].get_height() - 1
         Bird2_w = game_image['Bird2_img'][0].get_width() * 0.45 - 1
         if abs(p_y - Bird_2['y']) < Bird2_w and abs(p_x - Bird_2['x']) < Bird2_w:
             pygame.time.set_timer(unfreezeMario, 600)
             freezeMario = True
 
-    for Bird_3 in ran_Bird3:
+    for Bird_3 in random_Bird3:
         mario_h = game_image['TailUp'].get_height() / 2
         mario_w = game_image['TailUp'].get_width() / 2
         Bird3_h = game_image['Bird3_img'][0].get_height() / 2
@@ -492,25 +400,30 @@ def is_Colliding(up_pipes, low_pipes, ran_coin, ran_Bird, ran_Bird2, ran_Bird3):
         if abs(p_y + mario_h - Bird_3['y'] + Bird3_h - 10) < Bird3_h - 10 \
                 and abs(p_x + mario_w - Bird_3['x'] - Bird3_w) < Bird3_w:
             score += 1
-            a = ran_Bird3.index(Bird_3)
-            ran_Bird3[a] = {'x': 0, 'y': 0}
             game_audio_sound['kill'].play()
             last_p_y = p_y
             p_vx = p_flap_accuracy
             p_flap = True
+            Bird3_dead = True
+            game_image['Bird3_img'] = (
+                pygame.image.load(Bird13).convert_alpha(),
+                pygame.image.load(Bird14).convert_alpha(),
+                pygame.image.load(Bird15).convert_alpha(),
+                pygame.image.load(Bird16).convert_alpha(),
+            )
         if abs(p_y - mario_h - Bird_3['y'] - Bird3_h + 10) < Bird3_h \
                 and abs(p_x + mario_w - Bird_3['x'] - Bird3_w + 5) < Bird3_w:
             return True
 
     # coin hit box
-    for coin in ran_coin:
+    for coin in random_coin:
         coin_h = game_image['coin_img'][0].get_height()
         coin_w = game_image['coin_img'][0].get_width() * 1.5
         if abs(p_y - coin['y']) < coin_w and abs(p_x - coin['x']) < coin_w:
             score += 1
             coins += 1
-            a = ran_coin.index(coin)
-            ran_coin[a] = {'x': 0, 'y': 0}  # move coin off-screen if collected
+            a = random_coin.index(coin)
+            random_coin[a] = {'x': 0, 'y': 0}  # move coin off-screen if collected
             if coins > 99:
                 game_audio_sound['1UP'].play()
                 lives += 1
@@ -521,7 +434,7 @@ def is_Colliding(up_pipes, low_pipes, ran_coin, ran_Bird, ran_Bird2, ran_Bird3):
                 lives = 4
 
     # upper pipe hit box
-    for pipe in up_pipes:
+    for pipe in upper_pipes:
         pip_h = game_image['pipe'][0].get_height()
         pip_w = game_image['pipe'][0].get_width() / 2
         # calculate hit box on side of pipes
@@ -540,7 +453,7 @@ def is_Colliding(up_pipes, low_pipes, ran_coin, ran_Bird, ran_Bird2, ran_Bird3):
                 p_x = p_x + 3
 
     # lower pipe hit box
-    for pipe in low_pipes:
+    for pipe in lower_pipes:
         mario_h = game_image['Still'].get_height()
         pip_w = game_image['pipe'][0].get_width() / 2
         # calculate hit box on side of pipes
@@ -597,7 +510,7 @@ def get_Random_Bird():
     yesBird = random.randrange(20, 370)
     BirdX = screen_width
     Bird = [
-        {'x': BirdX, 'y': yesBird},  # coin
+        {'x': BirdX, 'y': yesBird}
     ]
     return Bird
 
@@ -609,7 +522,7 @@ def get_Random_Bird2():
     yesBird2 = random.randrange(20, 370)
     Bird2X = screen_width
     Bird_2 = [
-        {'x': Bird2X, 'y': yesBird2},  # coin
+        {'x': Bird2X, 'y': yesBird2}
     ]
     return Bird_2
 
@@ -621,16 +534,231 @@ def get_Random_Bird3():
     yesBird3 = random.randrange(20, 370)
     Bird3X = screen_width
     Bird_3 = [
-        {'x': Bird3X, 'y': yesBird3},  # coin
+        {'x': Bird3X, 'y': yesBird3}
     ]
     return Bird_3
 
 
-if __name__ == "__main__":
+class joystick_handler(object):
+    def __init__(self, id):
+        self.id = id
+        self.joy = pygame.joystick.Joystick(id)
+        self.name = self.joy.get_name()
+        self.joy.init()
+        self.numaxes = self.joy.get_numaxes()
+        self.numbuttons = self.joy.get_numbuttons()
+        self.numhats = self.joy.get_numhats()
+        self.axis = []
+        for i in range(self.numaxes):
+            self.axis.append(self.joy.get_axis(i))
+        self.button = []
+        for i in range(self.numbuttons):
+            self.button.append(self.joy.get_button(i))
+        self.hat = []
+        for i in range(self.numhats):
+            self.hat.append(self.joy.get_hat(i))
 
+    def init(self):
+        # self.clock = pygame.time.Clock()
+        self.joycount = pygame.joystick.get_count()
+        if self.joycount == 0:
+            print("404 Error, No Joys Found")
+        self.joy = []
+        for i in range(self.joycount):
+            self.joy.append(joystick_handler(i))
+
+
+class input_test(object):
+    def init(self):
+        self.joycount = pygame.joystick.get_count()
+        if self.joycount == 0:
+            print("No joysticks found.")
+        self.joy = []
+        for i in range(self.joycount):
+            self.joy.append(joystick_handler(i))
+
+    def run(self):
+        global start_screen, last_p_y, p_vx, p_flap, freezeMario, forward, reverse, reverse_index
+        for event in pygame.event.get():
+            if event.type == JOYHATMOTION:
+                self.joy[event.joy].hat[event.hat] = event.value
+                print(event.hat, event.value)
+            elif event.type == JOYAXISMOTION:
+                self.joy[event.joy].axis[event.axis] = event.value
+                if not start_screen:
+                    if not freezeMario:
+                        if event.axis == 0 and (event.value >= 1):
+                            forward = True
+                            reverse = False
+                            reverse_index = True
+                            load_forward_sprites()
+                        if event.axis == 0 and (event.value < 1):
+                            forward = False
+                            reverse = False
+                        if event.axis == 0 and (event.value <= -1):
+                            reverse = True
+                            forward = False
+                            if reverse_index:
+                                flip_sprites_left()
+                                reverse_index = False
+
+            elif event.type == JOYBUTTONUP:
+                self.joy[event.joy].button[event.button] = 0
+            elif event.type == JOYBUTTONDOWN:
+                self.joy[event.joy].button[event.button] = 1
+                if event.button == 1:
+                    if p_y > 0:
+                        last_p_y = p_y
+                        p_vx = p_flap_accuracy
+                        p_flap = True
+                        game_audio_sound['wing'].play()
+                if event.button == 9:
+                    if start_screen:
+                        game_audio_sound['start'].play()
+                        pygame.time.delay(2000)
+                        game_audio_sound['Overworld'].play()
+                        setupGamePlay()
+                        start_screen = False
+                if event.button == 8:
+                    pygame.quit()
+                    sys.exit()
+            elif event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+                pygame.quit()
+                sys.exit()
+
+            if start_screen:
+                if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP) \
+                        or event.type == MOUSEBUTTONDOWN:
+                    game_audio_sound['start'].play()
+                    pygame.time.delay(2000)
+                    game_audio_sound['Overworld'].play()
+                    setupGamePlay()
+                    start_screen = False
+            else:
+                gamePlayEvents(event)
+        if start_screen:
+            display_screen_window.blit(game_image['start'], (0, 0))
+            display_screen_window.blit(game_image['message'], (msgx, msgy))
+            pygame.display.update()
+            time_clock.tick(FPS)
+        else:
+            main_gameplay()
+
+
+def gamePlayEvents(event):
+    global freezeMario, last_p_y, p_vx, p_flap, forward, reverse, animateSprite, spriteInt, animatePWing, p_wing, \
+        reverse_index
+    if event.type == unfreezeMario:  # user event to flip coins
+        freezeMario = False
+    if not freezeMario:
+        if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP) \
+                or event.type == MOUSEBUTTONDOWN:
+            if p_y > 0:
+                last_p_y = p_y
+                p_vx = p_flap_accuracy
+                p_flap = True
+                game_audio_sound['wing'].play()
+        if event.type == KEYDOWN and (event.key == K_d):
+            forward = True
+            reverse = False
+            reverse_index = True
+            load_forward_sprites()
+        if event.type == KEYUP and (event.key == K_d):
+            forward = False
+
+        if event.type == KEYDOWN and (event.key == K_a):
+            reverse = True
+            forward = False
+            if reverse_index:
+                flip_sprites_left()
+                reverse_index = False
+
+    if event.type == KEYUP and (event.key == K_a):
+        reverse = False
+
+    if event.type == animateSprite:  # user event to flip coins
+        spriteInt += 1
+        if spriteInt > 3:
+            spriteInt = 0
+    if event.type == animatePWing:  # user event to flip coins
+        p_wing += 1
+        if p_wing > 1:
+            p_wing = 0
+
+
+def setupGamePlay():
+    global p_x, p_y, b_x, gameLevel, score, coins, lives, last_p_y, this_p_x, last_p_x, spriteInt, gameOver, \
+        crash_test, p_flap, forward, reverse, pipe_walking, freezeMario, Bird3_dead, background, ran_Bird, ran_Bird2, \
+        ran_Bird3, up_pipes, low_pipes, ran_coin, Bird1_Vx, Bird2_Vx, Bird3_Vx, pip_Vx, coin_Vx, p_vx, p_mvx, \
+        p_accuracy, p_flap_accuracy, animateSprite, unfreezeMario, animatePWing, reverse_index
+
+    p_x = 50  # 0 to 262, mario xAxis starting point
+    p_y = int(screen_width / 2)  # mario starting point
+    b_x = 0  # base xAxis position
+    gameLevel = 1
+    score = 0
+    coins = 0
+    lives = 1
+    last_p_y = p_y
+    this_p_x = 0
+    last_p_x = 0
+    spriteInt = 0
+    gameOver = False
+    crash_test = False  # hit box detection
+    p_flap = False
+    forward = False
+    reverse = False
+    reverse_index = False
+    pipe_walking = False
+    freezeMario = False
+    Bird3_dead = False
+    background = 'images/overworld.png'
+    game_image['background'] = pygame.image.load(background).convert()
+    load_forward_sprites()  # right facing sprites loaded first
+    ran_Bird = []
+    ran_Bird2 = []
+    ran_Bird3 = []
+    n_pip1 = get_Random_Pipes()
+    n_pip2 = get_Random_Pipes()
+    up_pipes = [
+        {'x': screen_width + 200, 'y': n_pip1[0]['y']},
+        {'x': screen_width + 200 + (screen_width / 2), 'y': n_pip2[0]['y']},
+    ]
+
+    low_pipes = [
+        {'x': screen_width + 200, 'y': n_pip1[1]['y']},
+        {'x': screen_width + 200 + (screen_width / 2), 'y': n_pip2[1]['y']},
+    ]
+
+    n_coin = get_Random_Coins()
+    n_coin2 = get_Random_Coins()
+
+    ran_coin = [
+        {'x': screen_width + 200, 'y': n_coin[0]['y']},
+        {'x': screen_width + 200 + (screen_width / 2), 'y': n_coin2[0]['y']},
+    ]
+
+    Bird1_Vx = - 3
+    Bird2_Vx = - 2
+    Bird3_Vx = - 5.5
+    pip_Vx = - 4  # pipe speed
+    coin_Vx = - 6
+    p_vx = -9
+    p_mvx = 10  # mario fall speed
+    p_accuracy = 1  # mario lift
+    p_flap_accuracy = -8  # mario lift
+    animateSprite = pygame.USEREVENT + 0  # 8 total user events
+    unfreezeMario = pygame.USEREVENT + 1
+    animatePWing = pygame.USEREVENT + 2  # 8 total user events
+    pygame.time.set_timer(animateSprite, 100)
+    pygame.time.set_timer(animatePWing, 100)
+    game_image['base'] = pygame.image.load(base).convert()
+
+
+if __name__ == "__main__":
     pygame.init()
-    pygame.joystick.init()
-    joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
+    program = input_test()
+    program.init()
     time_clock = pygame.time.Clock()
     pygame.display.set_caption('Flappy Bros.')
     game_image['numbers'] = (
@@ -681,7 +809,6 @@ if __name__ == "__main__":
     game_image['pipe'] = (pygame.transform.rotate(game_image['pipeFlip'], 180),
                           pygame.image.load(pipe_image).convert_alpha()
                           )
-    #
     # Game sounds
     game_audio_sound['die'] = pygame.mixer.Sound('sounds/die.wav')
     game_audio_sound['coin'] = pygame.mixer.Sound('sounds/coin.mp3')
@@ -702,6 +829,7 @@ if __name__ == "__main__":
     base = 'images/startBase.png'
     game_image['base'] = pygame.image.load(base).convert()
     load_forward_sprites()
+    msgx = int((screen_width - game_image['message'].get_width()) / 2)
+    msgy = int(scr_height * 0.13)
     while True:
-        welcome_main_screen()  # Shows welcome screen to the user until he presses a button
-        main_gameplay()  # This is the main game function
+        program.run()
