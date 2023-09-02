@@ -2,9 +2,21 @@ import random  # For generating random numbers
 import pygame
 import sys
 from pygame.locals import *
+import os
+# I see no reason to disable screensaver for this tool.
+os.environ["SDL_VIDEO_ALLOW_SCREENSAVER"] = "1"
+
+# Maybe people want to keep watching the joystick feedback even when this
+# window doesn't have focus. Possibly by capturing this window into OBS.
+os.environ["SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS"] = "1"
+
+# A tiny performance/latency hit isn't a problem here. Instead, it's more
+# important to keep the desktop compositing effects running fine. Disabling
+# compositing is known to cause issues on KDE/KWin/Plasma/X11 on Linux.
+os.environ["SDL_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR"] = "0"
 
 # Global Variables for the game
-FPS = 32
+FPS = 30
 screen_width = 289
 scr_height = 511
 display_screen_window = pygame.display.set_mode((screen_width, scr_height))
@@ -60,6 +72,7 @@ gameOver = False
 crash_test = False  # hit box detection
 Bird3_dead = False
 start_screen = True
+freezeMario = False
 
 
 def load_forward_sprites():
@@ -568,6 +581,42 @@ class joystick_handler(object):
             self.joy.append(joystick_handler(i))
 
 
+def axis_event(event):
+    global  forward, reverse, reverse_index
+    if event.axis == 0 and event.value >= 1:
+        forward = True
+        reverse = False
+        reverse_index = True
+        load_forward_sprites()
+    if event.axis == 0 and event.value < 1:
+        forward = False
+        reverse = False
+    if event.axis == 0 and event.value <= -1:
+        reverse = True
+        forward = False
+        if reverse_index:
+            flip_sprites_left()
+            reverse_index = False
+
+
+def hat_event(event):
+    global forward, reverse, reverse_index
+    if event.hat == 0 and event.value == (1, 0):
+        forward = True
+        reverse = False
+        reverse_index = True
+        load_forward_sprites()
+    if event.hat == 0 and event.value == (0, 0):
+        forward = False
+        reverse = False
+    if event.hat == 0 and event.value == (-1, 0):
+        reverse = True
+        forward = False
+        if reverse_index:
+            flip_sprites_left()
+            reverse_index = False
+
+
 class input_test(object):
     def init(self):
         self.joycount = pygame.joystick.get_count()
@@ -578,53 +627,40 @@ class input_test(object):
             self.joy.append(joystick_handler(i))
 
     def run(self):
-        global start_screen, last_p_y, p_vx, p_flap, freezeMario, forward, reverse, reverse_index
+        global start_screen, last_p_y, p_vx, p_flap, freezeMario, freezeMario
         for event in pygame.event.get():
-            if event.type == JOYHATMOTION:
-                self.joy[event.joy].hat[event.hat] = event.value
-                print(event.hat, event.value)
-            elif event.type == JOYAXISMOTION:
-                self.joy[event.joy].axis[event.axis] = event.value
-                if not start_screen:
-                    if not freezeMario:
-                        if event.axis == 0 and (event.value >= 1):
-                            forward = True
-                            reverse = False
-                            reverse_index = True
-                            load_forward_sprites()
-                        if event.axis == 0 and (event.value < 1):
-                            forward = False
-                            reverse = False
-                        if event.axis == 0 and (event.value <= -1):
-                            reverse = True
-                            forward = False
-                            if reverse_index:
-                                flip_sprites_left()
-                                reverse_index = False
-
-            elif event.type == JOYBUTTONUP:
-                self.joy[event.joy].button[event.button] = 0
-            elif event.type == JOYBUTTONDOWN:
-                self.joy[event.joy].button[event.button] = 1
-                if event.button == 1:
-                    if p_y > 0:
-                        last_p_y = p_y
-                        p_vx = p_flap_accuracy
-                        p_flap = True
-                        game_audio_sound['wing'].play()
-                if event.button == 9:
-                    if start_screen:
-                        game_audio_sound['start'].play()
-                        pygame.time.delay(2000)
-                        game_audio_sound['Overworld'].play()
-                        setupGamePlay()
-                        start_screen = False
-                if event.button == 8:
-                    pygame.quit()
-                    sys.exit()
-            elif event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+            if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                 pygame.quit()
                 sys.exit()
+            if not freezeMario:
+                if event.type == JOYHATMOTION:
+                    self.joy[event.joy].hat[event.hat] = event.value
+                    print(event.hat, event.value)
+                    hat_event(event)
+                elif event.type == JOYAXISMOTION:
+                    self.joy[event.joy].axis[event.axis] = event.value
+                    axis_event(event)
+                elif event.type == JOYBUTTONUP:
+                    self.joy[event.joy].button[event.button] = 0
+                elif event.type == JOYBUTTONDOWN:
+                    self.joy[event.joy].button[event.button] = 1
+                    print(event.button)
+                    if event.button == 1 and not start_screen:
+                        if p_y > 0:
+                            last_p_y = p_y
+                            p_vx = p_flap_accuracy
+                            p_flap = True
+                            game_audio_sound['wing'].play()
+                    if event.button == 7:
+                        if start_screen:
+                            game_audio_sound['start'].play()
+                            pygame.time.delay(2000)
+                            game_audio_sound['Overworld'].play()
+                            setupGamePlay()
+                            start_screen = False
+                    if event.button == 6:
+                        pygame.quit()
+                        sys.exit()
 
             if start_screen:
                 if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP) \
