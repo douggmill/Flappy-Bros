@@ -5,6 +5,7 @@ from pygame.locals import *
 import os
 import math
 import time
+
 # I see no reason to disable screensaver for this tool.
 os.environ["SDL_VIDEO_ALLOW_SCREENSAVER"] = "1"
 
@@ -75,11 +76,21 @@ last_p_x = 0
 spriteInt = 0
 p_wing = 0
 scroll = 0
+required_coins = 50
+world_five_time = 68  # 68 sec audio
+required_time = 175   # 175 sec audio
+countdown = 0
+scoreIndex = False
 crash_test = False  # hit box detection
 Bird3_dead = False
 start_screen = True
 freezeMario = False
 die_animation = False
+world_loop = False
+respawn = False
+respawn_end_time = 0
+respawn_elapsed_time = 0
+respawn_start_time = 0
 
 
 def load_forward_sprites():
@@ -91,6 +102,7 @@ def load_forward_sprites():
     game_image['RunStart'] = pygame.image.load(RunStart).convert_alpha()
     game_image['RunEnd'] = pygame.image.load(RunEnd).convert_alpha()
     game_image['Still'] = pygame.image.load(Still).convert_alpha()
+
 
 
 def flip_sprites_left():
@@ -171,7 +183,8 @@ def scroll_background():
 
 def game_over(upper_pipes, lower_pipes, random_coin, random_coin2, random_coin3, random_Bird, random_Bird2,
               random_Bird3, random_Bird4):
-    global p_x, p_y, b_x, play_ground, crash_test, gameLevel, start_screen, die_animation, collide
+    global p_x, p_y, b_x, play_ground, crash_test, gameLevel, start_screen, die_animation, collide, start_time, \
+        elapsed_time, respawn, respawn_start_time
     if pygame.mixer.get_busy():
         scroll_background()
         random_Stuff(upper_pipes, lower_pipes, random_coin, random_coin2, random_coin3, random_Bird, random_Bird2,
@@ -199,7 +212,7 @@ def game_over(upper_pipes, lower_pipes, random_coin, random_coin2, random_coin3,
             p_x = random.randrange(50, 250)
             p_y = random.randrange(50, 250)
             collide = is_Colliding(up_pipes, low_pipes, ran_coin, ran_coin2, ran_coin3, ran_Bird, ran_Bird2,
-                                      ran_Bird3, ran_Bird4)
+                                   ran_Bird3, ran_Bird4)
         die_animation = False
         if gameLevel == 1:
             game_audio_sound['Overworld'].play()
@@ -214,10 +227,13 @@ def game_over(upper_pipes, lower_pipes, random_coin, random_coin2, random_coin3,
         if gameLevel == 6:
             game_audio_sound['PipeMaze'].play()
         if gameLevel == 7:
-            game_audio_sound['Castle'].play()
-        if gameLevel == 8:
             game_audio_sound['Airship'].play()
-
+        if gameLevel == 8:
+            game_audio_sound['Castle'].play()
+        start_time = time.time()
+        elapsed_time = 0.00
+        respawn = True
+        respawn_start_time = time.time()
 
 
 def flap_da_wings():
@@ -234,9 +250,118 @@ def flap_da_wings():
         p_y = p_y + min(p_vx, p_y - p_height)
 
 
+def track_birds_start():
+    global Bird3_dead
+    if ran_Bird2:
+        if 0 <= ran_Bird2[0]['x'] < 3 and (gameLevel == 2 or gameLevel == 6 or gameLevel == 7):
+            new_Bird2 = get_Random_Bird2()
+            ran_Bird2.append(new_Bird2[0])
+        for Bird2_random in ran_Bird2:
+            Bird2_random['x'] += Bird2_Vx
+        if ran_Bird2[0]['x'] < -game_image['Bird2_img'][0].get_width():
+            ran_Bird2.pop(0)
+
+    if ran_Bird4:
+        if 0 <= ran_Bird4[0]['x'] < 4 and (gameLevel == 8):
+            new_Bird4 = get_Random_Bird4()
+            ran_Bird4.append(new_Bird4[0])
+        for Bird4_random in ran_Bird4:
+            Bird4_random['x'] += Bird3_Vx
+        if ran_Bird4[0]['x'] < -game_image['Bird4_img'].get_width():
+            ran_Bird4.pop(0)
+
+    if ran_Bird3:
+        if 0 < ran_Bird3[0]['x'] < 4 and (gameLevel == 3 or gameLevel == 6 or gameLevel == 7):
+            game_image['Bird3_img'] = (
+                pygame.image.load(Bird9).convert_alpha(),
+                pygame.image.load(Bird10).convert_alpha(),
+                pygame.image.load(Bird11).convert_alpha(),
+                pygame.image.load(Bird12).convert_alpha(),
+            )
+            new_Bird3 = get_Random_Bird3()
+            ran_Bird3.append(new_Bird3[0])
+        for Bird3_random in ran_Bird3:
+            Bird3_random['x'] += Bird3_Vx
+            if Bird3_dead and Bird3_random['y'] <= 381:
+                ran_Bird3[0]['y'] -= Bird3_Vx
+        if ran_Bird3[0]['x'] < -game_image['Bird3_img'][0].get_width():
+            ran_Bird3.pop(0)
+            game_image['Bird3_img'] = (
+                pygame.image.load(Bird9).convert_alpha(),
+                pygame.image.load(Bird10).convert_alpha(),
+                pygame.image.load(Bird11).convert_alpha(),
+                pygame.image.load(Bird12).convert_alpha(),
+            )
+            Bird3_dead = False
+
+    if ran_Bird:
+        if 0 <= ran_Bird[0]['x'] < 3 and (gameLevel == 4 or gameLevel == 7):
+            new_Bird = get_Random_Bird()
+            ran_Bird.append(new_Bird[0])
+        for Bird_random in ran_Bird:
+            Bird_random['x'] += Bird1_Vx
+        if ran_Bird[0]['x'] < -game_image['Bird_img'][0].get_width():
+            ran_Bird.pop(0)
+
+
+def track_birds():
+    global Bird3_dead
+    if ran_Bird2:
+        if 0 <= ran_Bird2[0]['x'] < 3 and (gameLevel == 2 or gameLevel == 6 or gameLevel == 7 or gameLevel == 8):
+            new_Bird2 = get_Random_Bird2()
+            ran_Bird2.append(new_Bird2[0])
+        for Bird2_random in ran_Bird2:
+            Bird2_random['x'] += Bird2_Vx
+        if ran_Bird2[0]['x'] < -game_image['Bird2_img'][0].get_width():
+            ran_Bird2.pop(0)
+
+    if ran_Bird4:
+        if 0 <= ran_Bird4[0]['x'] < 4 and (gameLevel == 8):
+            new_Bird4 = get_Random_Bird4()
+            ran_Bird4.append(new_Bird4[0])
+        for Bird4_random in ran_Bird4:
+            Bird4_random['x'] += Bird3_Vx
+        if ran_Bird4[0]['x'] < -game_image['Bird4_img'].get_width():
+            ran_Bird4.pop(0)
+
+    if ran_Bird3:
+        if 0 < ran_Bird3[0]['x'] < 4 and (gameLevel == 1 or gameLevel == 2 or gameLevel == 3 or gameLevel == 4 or
+                                          gameLevel == 6 or gameLevel == 7):
+            game_image['Bird3_img'] = (
+                pygame.image.load(Bird9).convert_alpha(),
+                pygame.image.load(Bird10).convert_alpha(),
+                pygame.image.load(Bird11).convert_alpha(),
+                pygame.image.load(Bird12).convert_alpha(),
+            )
+            new_Bird3 = get_Random_Bird3()
+            ran_Bird3.append(new_Bird3[0])
+        for Bird3_random in ran_Bird3:
+            Bird3_random['x'] += Bird3_Vx
+            if Bird3_dead and Bird3_random['y'] <= 381:
+                ran_Bird3[0]['y'] -= Bird3_Vx
+        if ran_Bird3[0]['x'] < -game_image['Bird3_img'][0].get_width():
+            ran_Bird3.pop(0)
+            game_image['Bird3_img'] = (
+                pygame.image.load(Bird9).convert_alpha(),
+                pygame.image.load(Bird10).convert_alpha(),
+                pygame.image.load(Bird11).convert_alpha(),
+                pygame.image.load(Bird12).convert_alpha(),
+            )
+            Bird3_dead = False
+
+    if ran_Bird:
+        if 0 <= ran_Bird[0]['x'] < 3 and (gameLevel == 1 or gameLevel == 3 or gameLevel == 4 or gameLevel == 7):
+            new_Bird = get_Random_Bird()
+            ran_Bird.append(new_Bird[0])
+        for Bird_random in ran_Bird:
+            Bird_random['x'] += Bird1_Vx
+        if ran_Bird[0]['x'] < -game_image['Bird_img'][0].get_width():
+            ran_Bird.pop(0)
+
+
 def main_gameplay():
     global crash_test, start_screen, p_flap, lives, die_animation, Bird3_dead, coin_Vx, coin2_Vx, coin3_Vx, \
-        ran_coin2, ran_coin3
+        ran_coin2, ran_coin3, respawn_elapsed_time, Vtime
     if not die_animation:
         flap_da_wings()
 
@@ -247,7 +372,6 @@ def main_gameplay():
             coin_random['x'] += coin_Vx
 
         if ran_coin2:
-
             if 0 <= ran_coin2[0]['x'] < 5 and gameLevel == 5:
                 new_coin2 = get_Random_Coins2()
                 ran_coin2.append(new_coin2[0])
@@ -265,56 +389,10 @@ def main_gameplay():
             if ran_coin3[0]['x'] < -game_image['pipe'][0].get_width():
                 ran_coin3.pop(0)
 
-        if ran_Bird2:
-            if 0 <= ran_Bird2[0]['x'] < 3 and (gameLevel == 2 or gameLevel == 6 or gameLevel == 7):
-                new_Bird2 = get_Random_Bird2()
-                ran_Bird2.append(new_Bird2[0])
-            for Bird2_random in ran_Bird2:
-                Bird2_random['x'] += Bird2_Vx
-            if ran_Bird2[0]['x'] < -game_image['Bird2_img'][0].get_width():
-                ran_Bird2.pop(0)
-
-        if ran_Bird4:
-            if 0 <= ran_Bird4[0]['x'] < 4 and (gameLevel == 8):
-                new_Bird4 = get_Random_Bird4()
-                ran_Bird4.append(new_Bird4[0])
-            for Bird4_random in ran_Bird4:
-                Bird4_random['x'] += Bird3_Vx
-            if ran_Bird4[0]['x'] < -game_image['Bird4_img'].get_width():
-                ran_Bird4.pop(0)
-
-        if ran_Bird3:
-            if 0 < ran_Bird3[0]['x'] < 4 and (gameLevel == 3 or gameLevel == 6 or gameLevel == 7):
-                game_image['Bird3_img'] = (
-                    pygame.image.load(Bird9).convert_alpha(),
-                    pygame.image.load(Bird10).convert_alpha(),
-                    pygame.image.load(Bird11).convert_alpha(),
-                    pygame.image.load(Bird12).convert_alpha(),
-                )
-                new_Bird3 = get_Random_Bird3()
-                ran_Bird3.append(new_Bird3[0])
-            for Bird3_random in ran_Bird3:
-                Bird3_random['x'] += Bird3_Vx
-                if Bird3_dead and Bird3_random['y'] <= 381:
-                    ran_Bird3[0]['y'] -= Bird3_Vx
-            if ran_Bird3[0]['x'] < -game_image['Bird3_img'][0].get_width():
-                ran_Bird3.pop(0)
-                game_image['Bird3_img'] = (
-                    pygame.image.load(Bird9).convert_alpha(),
-                    pygame.image.load(Bird10).convert_alpha(),
-                    pygame.image.load(Bird11).convert_alpha(),
-                    pygame.image.load(Bird12).convert_alpha(),
-                )
-                Bird3_dead = False
-
-        if ran_Bird:
-            if 0 <= ran_Bird[0]['x'] < 3 and (gameLevel == 4 or gameLevel == 7):
-                new_Bird = get_Random_Bird()
-                ran_Bird.append(new_Bird[0])
-            for Bird_random in ran_Bird:
-                Bird_random['x'] += Bird1_Vx
-            if ran_Bird[0]['x'] < -game_image['Bird_img'][0].get_width():
-                ran_Bird.pop(0)
+        if not world_loop:
+            track_birds_start()
+        else:
+            track_birds()
 
         if 0 < up_pipes[0]['x'] < 5:
             new_pip = get_Random_Pipes()
@@ -346,10 +424,27 @@ def main_gameplay():
             crash_test = False
             game_audio_sound['die'].play()
         else:
-            sprite_animations()
+
+            if respawn:
+                Vtime = str(respawn_elapsed_time).split('.')
+                if Vtime != ['0']:
+                    Vtime = Vtime[1]
+                if int(Vtime[0]) % 2 == 0:  # flash sprite during invincibility
+                    sprite_animations()
+            else:
+                sprite_animations()
             crash_test = is_Colliding(up_pipes, low_pipes, ran_coin, ran_coin2, ran_coin3, ran_Bird, ran_Bird2,
                                       ran_Bird3, ran_Bird4)
-            check_Points()
+            if not world_loop:
+                if 1 <= gameLevel <= 4:
+                    score_count_down_start()
+                if gameLevel > 4:
+                    score_count_down()
+                check_Points_Start()
+
+            else:
+                score_count_down()
+                check_Points()
 
     else:
         game_over(up_pipes, low_pipes, ran_coin, ran_coin2, ran_coin3, ran_Bird, ran_Bird2, ran_Bird3, ran_Bird4)
@@ -368,6 +463,37 @@ def main_gameplay():
 def level_lives_count():
     display_screen_window.blit(game_image['numbers'][gameLevel], (76, 454))  # world number
     display_screen_window.blit(game_image['numbers'][lives], (62, 468))  # lives
+
+
+def score_count_down_start():
+    global scoreIndex, countdown
+    if scoreIndex:
+        countdown -= 1
+        scoreIndex = False
+    d = [int(x) for x in list(str(countdown))]
+    w = 0
+    for digit in d:
+        w += game_image['numbers'][digit].get_width()
+    Xoffset = (screen_width - w) / 2  # x axis numbers
+    for digit in d:
+        display_screen_window.blit(game_image['numbers'][digit], (Xoffset, scr_height * 0.917))  # y axis numbers
+        Xoffset += game_image['numbers'][digit].get_width()
+
+
+def score_count_down():
+    global required_time, countdown, world_five_time, elapsed_time
+    if gameLevel == 5:
+        countdown = world_five_time - elapsed_time
+    else:
+        countdown = required_time - elapsed_time
+    d = [int(x) for x in list(str(int(countdown)))]
+    w = 0
+    for digit in d:
+        w += game_image['numbers'][digit].get_width()
+    Xoffset = (screen_width - w) / 2  # x axis numbers
+    for digit in d:
+        display_screen_window.blit(game_image['numbers'][digit], (Xoffset, scr_height * 0.917))  # y axis numbers
+        Xoffset += game_image['numbers'][digit].get_width()
 
 
 def score_count():
@@ -469,23 +595,26 @@ def sprite_animations():
         display_screen_window.blit(game_image['TailFroze'], (p_x, p_y))
 
 
-def check_Points():
-    global background, score, gameLevel, event, start_time, end_time, elapsed_time
-    if score == 50 and gameLevel < 2:
+def check_Points_Start():
+    global background, score, gameLevel, event, start_time, end_time, elapsed_time, world_loop, required_coins, \
+        required_time, countdown, world_five_time
+    if score == required_coins and gameLevel == 1:
         gameLevel += 1
         game_audio_sound['Overworld'].stop()
         game_audio_sound['Underground'].play()
         background = 'images/underground.png'
         game_image['background'] = pygame.image.load(background).convert()
         start_Bird2()
-    if score == 100 and gameLevel < 3:
+        countdown = required_coins
+    if score == required_coins * 2 and gameLevel == 2:
         gameLevel += 1
         game_audio_sound['Underground'].stop()
         game_audio_sound['Athletic'].play()
         background = 'images/athletic.png'
         game_image['background'] = pygame.image.load(background).convert()
         start_Bird3()
-    if score == 150 and gameLevel < 4:
+        countdown = required_coins
+    if score == required_coins * 3 and gameLevel == 3:
         gameLevel += 1
         game_audio_sound['Athletic'].stop()
         game_audio_sound['desert'].play()
@@ -497,8 +626,9 @@ def check_Points():
                               pygame.image.load(pipe_img).convert_alpha()
                               )
         start_Bird1()
+        countdown = required_coins
 
-    if score == 200 and gameLevel < 5:
+    if score == required_coins * 4 and gameLevel == 4:
         gameLevel += 1
         game_audio_sound['desert'].stop()
         game_audio_sound['Music Box'].play()
@@ -512,12 +642,14 @@ def check_Points():
         start_Coin2()
         start_Coin3()
         start_time = time.time()
+        elapsed_time = 0.00
 
-    if gameLevel == 5 or gameLevel == 6 or gameLevel == 7 or gameLevel == 8:
+    if gameLevel >= 5:
         end_time = time.time()
         elapsed_time = end_time - start_time
 
-    if gameLevel < 6 and elapsed_time >= 68:  # 68
+    if gameLevel == 5 and elapsed_time >= world_five_time:  # 68
+        print('1')
         gameLevel += 1
         game_audio_sound['Music Box'].stop()
         game_audio_sound['PipeMaze'].play()
@@ -528,7 +660,7 @@ def check_Points():
         start_Bird2()
         start_Bird3()
 
-    if gameLevel < 7 and elapsed_time >= 175:  # 175
+    if gameLevel == 6 and elapsed_time >= required_time:  # 175
         gameLevel += 1
         game_audio_sound['PipeMaze'].stop()
         game_audio_sound['Airship'].play()
@@ -545,7 +677,7 @@ def check_Points():
         start_Bird3()
         start_Bird1()
 
-    if gameLevel < 8 and elapsed_time >= 175:   # 175
+    if gameLevel == 7 and elapsed_time >= required_time:  # 175
         gameLevel += 1
         game_audio_sound['Airship'].stop()
         game_audio_sound['Castle'].play()
@@ -560,74 +692,221 @@ def check_Points():
         elapsed_time = 0.00
         start_Bird4()
 
+    if gameLevel == 8 and elapsed_time >= required_time:  # 175
+        world_loop = True
+        gameLevel = 1
+        game_audio_sound['Castle'].stop()
+        game_audio_sound['Overworld'].play()
+        background = 'images/Overworld.png'
+        game_image['background'] = pygame.image.load(background).convert()
+        pipe_img = 'images/pipe.png'
+        game_image['pipeFlip'] = pygame.transform.flip(pygame.image.load(pipe_img).convert_alpha(), True, False)
+        game_image['pipe'] = (pygame.transform.rotate(game_image['pipeFlip'], 180),
+                              pygame.image.load(pipe_img).convert_alpha()
+                              )
+        start_time = time.time()
+        elapsed_time = 0.00
+        start_Bird1()
+        start_Bird3()
+
+
+def check_Points():
+    global background, score, gameLevel, event, start_time, end_time, elapsed_time, world_loop, world_five_time, \
+        required_time
+
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+
+    if gameLevel == 1 and elapsed_time >= required_time:
+        gameLevel += 1
+        game_audio_sound['Overworld'].stop()
+        game_audio_sound['Underground'].play()
+        background = 'images/underground.png'
+        game_image['background'] = pygame.image.load(background).convert()
+        start_time = time.time()
+        elapsed_time = 0.00
+        start_Bird2()
+        start_Bird3()
+
+    if gameLevel == 2 and elapsed_time >= required_time:
+        gameLevel += 1
+        game_audio_sound['Underground'].stop()
+        game_audio_sound['Athletic'].play()
+        background = 'images/athletic.png'
+        game_image['background'] = pygame.image.load(background).convert()
+        start_time = time.time()
+        elapsed_time = 0.00
+        start_Bird1()
+        start_Bird3()
+
+    if gameLevel == 3 and elapsed_time >= required_time:
+        gameLevel += 1
+        game_audio_sound['Athletic'].stop()
+        game_audio_sound['desert'].play()
+        background = 'images/desert.png'
+        game_image['background'] = pygame.image.load(background).convert()
+        pipe_img = 'images/pipe2.png'
+        game_image['pipeFlip'] = pygame.transform.flip(pygame.image.load(pipe_img).convert_alpha(), True, False)
+        game_image['pipe'] = (pygame.transform.rotate(game_image['pipeFlip'], 180),
+                              pygame.image.load(pipe_img).convert_alpha()
+                              )
+        start_time = time.time()
+        elapsed_time = 0.00
+        start_Bird1()
+        start_Bird3()
+
+    if gameLevel == 4 and elapsed_time >= required_time:
+        gameLevel += 1
+        game_audio_sound['desert'].stop()
+        game_audio_sound['Music Box'].play()
+        background = 'images/clouds.png'
+        game_image['background'] = pygame.image.load(background).convert()
+        pipe_img = 'images/pipe.png'
+        game_image['pipeFlip'] = pygame.transform.flip(pygame.image.load(pipe_img).convert_alpha(), True, False)
+        game_image['pipe'] = (pygame.transform.rotate(game_image['pipeFlip'], 180),
+                              pygame.image.load(pipe_img).convert_alpha()
+                              )
+        start_time = time.time()
+        elapsed_time = 0.00
+        start_Coin2()
+        start_Coin3()
+
+    if gameLevel == 5 and elapsed_time >= world_five_time:  # 68
+        gameLevel += 1
+        game_audio_sound['Music Box'].stop()
+        game_audio_sound['PipeMaze'].play()
+        background = 'images/PipeMaze.png'
+        game_image['background'] = pygame.image.load(background).convert()
+        start_time = time.time()
+        elapsed_time = 0.00
+        start_Bird2()
+        start_Bird3()
+
+    if gameLevel == 6 and elapsed_time >= required_time:  # 175
+        gameLevel += 1
+        game_audio_sound['PipeMaze'].stop()
+        game_audio_sound['Airship'].play()
+        background = 'images/Airship.png'
+        game_image['background'] = pygame.image.load(background).convert()
+        pipe_img = 'images/pipe3.png'
+        game_image['pipeFlip'] = pygame.transform.flip(pygame.image.load(pipe_img).convert_alpha(), True, False)
+        game_image['pipe'] = (pygame.transform.rotate(game_image['pipeFlip'], 180),
+                              pygame.image.load(pipe_img).convert_alpha()
+                              )
+        start_time = time.time()
+        elapsed_time = 0.00
+        start_Bird2()
+        start_Bird3()
+        start_Bird1()
+
+    if gameLevel == 7 and elapsed_time >= required_time:  # 175
+        gameLevel += 1
+        game_audio_sound['Airship'].stop()
+        game_audio_sound['Castle'].play()
+        background = 'images/Castle.png'
+        game_image['background'] = pygame.image.load(background).convert()
+        pipe_img = 'images/pipe4.png'
+        game_image['pipeFlip'] = pygame.transform.flip(pygame.image.load(pipe_img).convert_alpha(), True, False)
+        game_image['pipe'] = (pygame.transform.rotate(game_image['pipeFlip'], 180),
+                              pygame.image.load(pipe_img).convert_alpha()
+                              )
+        start_time = time.time()
+        elapsed_time = 0.00
+        start_Bird4()
+
+    if gameLevel == 8 and elapsed_time >= required_time:  # 175
+        gameLevel = 1
+        game_audio_sound['Castle'].stop()
+        game_audio_sound['Overworld'].play()
+        background = 'images/Overworld.png'
+        game_image['background'] = pygame.image.load(background).convert()
+        pipe_img = 'images/pipe.png'
+        game_image['pipeFlip'] = pygame.transform.flip(pygame.image.load(pipe_img).convert_alpha(), True, False)
+        game_image['pipe'] = (pygame.transform.rotate(game_image['pipeFlip'], 180),
+                              pygame.image.load(pipe_img).convert_alpha()
+                              )
+        start_time = time.time()
+        elapsed_time = 0.00
+
+        # start_Bird2()
+        # start_Bird3()
+
 
 def is_Colliding(upper_pipes, lower_pipes, random_coin, random_coin2, random_coin3, random_Bird, random_Bird2,
                  random_Bird3, random_Bird4):
     global p_x, p_y, p_flap, forward, pipe_walking, score, coin_h, Bird_h, Bird2_h, Bird3_h, freezeMario, \
-        unfreezeMario, last_p_y, p_vx, p_flap_accuracy, coins, lives, Bird3_dead
+        unfreezeMario, last_p_y, p_vx, p_flap_accuracy, coins, lives, Bird3_dead, scoreIndex, respawn, \
+        respawn_end_time, respawn_elapsed_time, respawn_start_time
 
-    if p_y > play_ground - 25 or p_y < 0:  # out of bounds
-        p_flap = True
-        last_p_y = p_y
-        p_vx = p_flap_accuracy
-        return True
-    elif p_x == 0:
-        p_flap = True
-        last_p_y = p_y
-        p_vx = p_flap_accuracy
-        return True
-
-    for Bird in random_Bird:  # bird hit box
-        Bird_h = game_image['Bird_img'][0].get_height() - 1
-        Bird_w = game_image['Bird_img'][0].get_width() * 0.45 - 1
-        if abs(p_y - Bird['y']) < Bird_w and abs(p_x - Bird['x']) < Bird_w:
+    if not respawn:
+        if p_y > play_ground - 25 or p_y < 0:  # out of bounds
+            p_flap = True
+            last_p_y = p_y
+            p_vx = p_flap_accuracy
+            return True
+        elif p_x == 0:
             p_flap = True
             last_p_y = p_y
             p_vx = p_flap_accuracy
             return True
 
-    for Bird_4 in random_Bird4:  # bird hit box
-        Bird_h = game_image['Bird4_img'].get_height() * 0.6
-        Bird_w = game_image['Bird4_img'].get_width() * 0.6
-        if abs(p_y - 20 - Bird_4['y']) < Bird_h and abs(p_x - 20 - Bird_4['x']) < Bird_w:
-            p_flap = True
-            last_p_y = p_y
-            p_vx = p_flap_accuracy
-            return True
+        for Bird in random_Bird:  # bird hit box
+            Bird_h = game_image['Bird_img'][0].get_height() - 1
+            Bird_w = game_image['Bird_img'][0].get_width() * 0.45 - 1
+            if abs(p_y - Bird['y']) < Bird_w and abs(p_x - Bird['x']) < Bird_w:
+                p_flap = True
+                last_p_y = p_y
+                p_vx = p_flap_accuracy
+                return True
 
-    for Bird_2 in random_Bird2:
-        Bird2_h = game_image['Bird2_img'][0].get_height() - 1
-        Bird2_w = game_image['Bird2_img'][0].get_width() * 0.45 - 1
-        if abs(p_y - Bird_2['y']) < Bird2_w and abs(p_x - Bird_2['x']) < Bird2_w:
-            pygame.time.set_timer(unfreezeMario, 600)
-            freezeMario = True
+        for Bird_4 in random_Bird4:  # bird hit box
+            Bird_h = game_image['Bird4_img'].get_height() * 0.6
+            Bird_w = game_image['Bird4_img'].get_width() * 0.6
+            if abs(p_y - 20 - Bird_4['y']) < Bird_h and abs(p_x - 20 - Bird_4['x']) < Bird_w:
+                p_flap = True
+                last_p_y = p_y
+                p_vx = p_flap_accuracy
+                return True
 
-    for Bird_3 in random_Bird3:
-        mario_h = game_image['TailUp'].get_height() / 2
-        mario_w = game_image['TailUp'].get_width() / 2
-        Bird3_h = game_image['Bird3_img'][0].get_height() / 2
-        Bird3_w = game_image['Bird3_img'][0].get_width() / 2
-        if abs(p_y + mario_h - Bird_3['y'] + Bird3_h - 10) < Bird3_h - 10 \
-                and abs(p_x + mario_w - Bird_3['x'] - Bird3_w) < Bird3_w:
-            score += 1
-            game_audio_sound['kill'].play()
-            last_p_y = p_y
-            p_vx = p_flap_accuracy
-            p_flap = True
-            Bird3_dead = True
-            game_image['Bird3_img'] = (
-                pygame.image.load(Bird13).convert_alpha(),
-                pygame.image.load(Bird14).convert_alpha(),
-                pygame.image.load(Bird15).convert_alpha(),
-                pygame.image.load(Bird16).convert_alpha(),
-            )
+        for Bird_2 in random_Bird2:
+            Bird2_h = game_image['Bird2_img'][0].get_height() - 1
+            Bird2_w = game_image['Bird2_img'][0].get_width() * 0.45 - 1
+            if abs(p_y - Bird_2['y']) < Bird2_w and abs(p_x - Bird_2['x']) < Bird2_w:
+                pygame.time.set_timer(unfreezeMario, 600)
+                freezeMario = True
 
-        if abs(p_y - mario_h - Bird_3['y'] - Bird3_h + 10) < Bird3_h \
-                and abs(p_x + mario_w - Bird_3['x'] - Bird3_w + 5) < Bird3_w:
-            p_flap = True
-            last_p_y = p_y
-            p_vx = p_flap_accuracy
-            return True
+        for Bird_3 in random_Bird3:
+            mario_h = game_image['TailUp'].get_height() / 2
+            mario_w = game_image['TailUp'].get_width() / 2
+            Bird3_h = game_image['Bird3_img'][0].get_height() / 2
+            Bird3_w = game_image['Bird3_img'][0].get_width() / 2
+            if abs(p_y + mario_h - Bird_3['y'] + Bird3_h - 10) < Bird3_h - 10 \
+                    and abs(p_x + mario_w - Bird_3['x'] - Bird3_w) < Bird3_w:
+                score += 1
+                scoreIndex = True
+                game_audio_sound['kill'].play()
+                last_p_y = p_y
+                p_vx = p_flap_accuracy
+                p_flap = True
+                Bird3_dead = True
+                game_image['Bird3_img'] = (
+                    pygame.image.load(Bird13).convert_alpha(),
+                    pygame.image.load(Bird14).convert_alpha(),
+                    pygame.image.load(Bird15).convert_alpha(),
+                    pygame.image.load(Bird16).convert_alpha(),
+                )
+
+            if abs(p_y - mario_h - Bird_3['y'] - Bird3_h + 10) < Bird3_h \
+                    and abs(p_x + mario_w - Bird_3['x'] - Bird3_w + 5) < Bird3_w:
+                p_flap = True
+                last_p_y = p_y
+                p_vx = p_flap_accuracy
+                return True
+    else:
+        respawn_end_time = time.time()
+        respawn_elapsed_time = respawn_end_time - respawn_start_time
+        if respawn_elapsed_time >= 2:
+            respawn = False
 
     # coin hit box
     for coin in random_coin:
@@ -635,6 +914,7 @@ def is_Colliding(upper_pipes, lower_pipes, random_coin, random_coin2, random_coi
         coin_w = game_image['coin_img'][0].get_width() * 1.5
         if abs(p_y - coin['y']) < coin_w and abs(p_x - coin['x']) < coin_w:
             score += 1
+            scoreIndex = True
             coins += 1
             a = random_coin.index(coin)
             random_coin[a] = {'x': 0, 'y': 0}  # move coin off-screen if collected
@@ -652,6 +932,7 @@ def is_Colliding(upper_pipes, lower_pipes, random_coin, random_coin2, random_coi
         coin_w = game_image['coin_img'][0].get_width() * 1.5
         if abs(p_y - coin_2['y']) < coin_w and abs(p_x - coin_2['x']) < coin_w:
             score += 1
+            scoreIndex = True
             coins += 1
             a = random_coin2.index(coin_2)
             random_coin2[a] = {'x': 0, 'y': 0}  # move coin off-screen if collected
@@ -669,6 +950,7 @@ def is_Colliding(upper_pipes, lower_pipes, random_coin, random_coin2, random_coi
         coin_w = game_image['coin_img'][0].get_width() * 1.5
         if abs(p_y - coin_3['y']) < coin_w and abs(p_x - coin_3['x']) < coin_w:
             score += 1
+            scoreIndex = True
             coins += 1
             a = random_coin3.index(coin_3)
             random_coin3[a] = {'x': 0, 'y': 0}  # move coin off-screen if collected
@@ -990,12 +1272,13 @@ def setupGamePlay():
         forward, reverse, pipe_walking, freezeMario, Bird3_dead, background, ran_Bird, ran_Bird2, ran_Bird3, up_pipes, \
         low_pipes, ran_coin, ran_coin2, ran_coin3, Bird1_Vx, Bird2_Vx, Bird3_Vx, pip_Vx, coin_Vx, coin2_Vx, coin3_Vx, \
         p_vx, p_mvx, p_accuracy, p_flap_accuracy, animateSprite, unfreezeMario, animatePWing, reverse_index, tiles, \
-        die_animation, elapsed_time, ran_Bird4
+        die_animation, elapsed_time, ran_Bird4, world_loop, countdown
 
     p_x = 50  # 0 to 262, mario xAxis starting point
     p_y = int(screen_width / 2)  # mario starting point
     b_x = 0  # base xAxis position
     gameLevel = 1
+    countdown = required_coins
     score = 0
     coins = 0
     lives = 4
@@ -1012,6 +1295,7 @@ def setupGamePlay():
     freezeMario = False
     Bird3_dead = False
     die_animation = False
+    world_loop = False
     background = 'images/Overworld.png'
     game_image['background'] = pygame.image.load(background).convert()
     tiles = math.ceil(screen_width / game_image['background'].get_width()) + 1
@@ -1114,7 +1398,6 @@ if __name__ == "__main__":
     )
 
     game_image['Bird4_img'] = pygame.image.load(Bird17).convert_alpha()
-
     game_image['die'] = pygame.image.load(die).convert_alpha()
     game_image['start'] = pygame.image.load(start).convert_alpha()
     game_image['restart'] = pygame.image.load(restart).convert_alpha()
