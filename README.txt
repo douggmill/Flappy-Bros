@@ -11,7 +11,7 @@ Worlds 1 - 4 gain 50 points to progress to next level.
 Level 5 is bonus coin level that lasts 1 minute.
 Worlds 6 - 8 last 3 minutes each.
 After world 8, levels loop forever.
-Worlds 1 - 4 now have more birds and last 3 minutes each.
+Worlds 1 - 4 after 1st loop now have more birds and last 3 minutes each.
 
 To do List - 
 Add highscores
